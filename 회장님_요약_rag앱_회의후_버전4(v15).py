@@ -43,7 +43,7 @@ if not uploaded_file or not keyword_file:
     st.stop()
 
 # 핵심 키워드 로딩
-keyword_df = pd.read_excel(keyword_file)
+keyword_df = pd.read_excel(keyword_file, engine="openpyxl")
 core_keywords = keyword_df.iloc[:, 0].dropna().astype(str).tolist()
 
 # --- 1단계: 요약 함수 ---
@@ -101,7 +101,7 @@ def regenerate_summary(original_summary, original_answer):
     return response.content
 
 # --- 실행 로직 ---
-df = pd.read_excel(uploaded_file)
+df = pd.read_excel(uploaded_file, engine-"openpyxl")
 
 if {'사전질문', '질문배경', '답변원문'}.issubset(df.columns):
     with st.spinner("요약 중..."):
@@ -134,5 +134,6 @@ if {'사전질문', '질문배경', '답변원문'}.issubset(df.columns):
 
 else:
     st.error("필수 컬럼(사전질문, 질문배경, 답변원문)이 누락되어 있습니다.")
+
 
 
