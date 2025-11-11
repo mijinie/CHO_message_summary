@@ -10,11 +10,26 @@ from io import BytesIO
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 # 벡터스토어 로드
-vectorstore = FAISS.load_local(
-    "ja-in_vectorstore",
-    OpenAIEmbeddings(openai_api_key=openai.api_key),
-    allow_dangerous_deserialization=True
-)
+import os
+
+@st.cache_resource
+def load_vectorstore():
+    try:
+        base_dir = os.path.dirname(__file__)
+        vs_path = os.path.join(base_dir, "ja-in_vectorstore")
+        if not os.path.isdir(vs_path):
+            st.warning(f"Vectorstore 폴더 없음: {vs_path}")
+            return None
+        return FAISS.load_local(
+            vs_path,
+            OpenAIEmbeddings(openai_api_key=openai.api_key),
+            allow_dangerous_deserialization=True
+        )
+    except Exception as e:
+        st.exception(e)  # 화면에 트레이스백 표시
+        return None
+
+vectorstore = load_vectorstore()
 
 # LLM 인스턴스
 llm = ChatOpenAI(model="gpt-4o", temperature=0.4)
@@ -119,4 +134,5 @@ if {'사전질문', '질문배경', '답변원문'}.issubset(df.columns):
 
 else:
     st.error("필수 컬럼(사전질문, 질문배경, 답변원문)이 누락되어 있습니다.")
+
 
