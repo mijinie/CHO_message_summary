@@ -6,6 +6,43 @@ from langchain_core.messages import SystemMessage, HumanMessage
 import openai
 from io import BytesIO
 
+st.subheader("🔎 업로드 스모크 테스트")
+kw_dbg = st.file_uploader("TEST 키워드 업로드 (제한 없음)", type=None, key="kw_dbg")
+qa_dbg = st.file_uploader("TEST Q&A 업로드 (제한 없음)", type=None, key="qa_dbg")
+
+col1, col2 = st.columns(2)
+with col1:
+    st.caption("키워드 업로더 상태")
+    st.write({"is_none": kw_dbg is None,
+              "name": getattr(kw_dbg, "name", None),
+              "size": (None if kw_dbg is None else len(kw_dbg.getbuffer()))})
+
+with col2:
+    st.caption("Q&A 업로더 상태")
+    st.write({"is_none": qa_dbg is None,
+              "name": getattr(qa_dbg, "name", None),
+              "size": (None if qa_dbg is None else len(qa_dbg.getbuffer()))})
+
+# 업로더가 정상이라면 아래 DataFrame 미리보기도 나옵니다.
+if kw_dbg:
+    try:
+        df_kw_dbg = pd.read_excel(kw_dbg, engine="openpyxl")
+        st.success(f"키워드 DF: {df_kw_dbg.shape}")
+        st.dataframe(df_kw_dbg.head())
+    except Exception as e:
+        st.error("키워드 파일 읽기 오류")
+        st.exception(e)
+
+if qa_dbg:
+    try:
+        df_qa_dbg = pd.read_excel(qa_dbg, engine="openpyxl")
+        st.success(f"Q&A DF: {df_qa_dbg.shape}")
+        st.dataframe(df_qa_dbg.head())
+    except Exception as e:
+        st.error("Q&A 파일 읽기 오류")
+        st.exception(e)
+
+
 # OpenAI 키 세팅
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 
@@ -16,9 +53,11 @@ import os
 def load_vectorstore():
     try:
         base_dir = os.path.dirname(__file__)
-        vs_path = os.path.join(base_dir, "ja-in_vectorstore")
+        # 절대경로 보정
+        vs_path = os.path.abspath(os.path.join(base_dir, "ja-in_vectorstore"))
+        st.sidebar.write({"vectorstore_path": vs_path, "exists": os.path.isdir(vs_path)})
         if not os.path.isdir(vs_path):
-            st.warning(f"Vectorstore 폴더 없음: {vs_path}")
+            st.warning(f"⚠️ Vectorstore 폴더 없음: {vs_path}")
             return None
         return FAISS.load_local(
             vs_path,
@@ -26,7 +65,8 @@ def load_vectorstore():
             allow_dangerous_deserialization=True
         )
     except Exception as e:
-        st.exception(e)  # 화면에 트레이스백 표시
+        st.error("Vectorstore 로드 중 예외")
+        st.exception(e)   # 화면에 트레이스백 표시
         return None
 
 vectorstore = load_vectorstore()
@@ -49,8 +89,11 @@ core_keywords = keyword_df.iloc[:, 0].dropna().astype(str).tolist()
 # --- 1단계: 요약 함수 ---
 def generate_summary(question, background, answer):
     query = f"{question}\n{background}"
-    docs = vectorstore.similarity_search(query, k=3)
-    reference = "\n".join([doc.page_content for doc in docs])
+    if vectorstore:
+        docs = vectorstore.similarity_search(query, k=3)
+        reference = "\n".join(d.page_content for d in docs)
+    else:
+        reference = ""
 
     system_prompt = (
         "회장님의 실제 발화 내용을 바탕으로 정돈된 요약을 생성한다.\n"
@@ -134,6 +177,7 @@ if {'사전질문', '질문배경', '답변원문'}.issubset(df.columns):
 
 else:
     st.error("필수 컬럼(사전질문, 질문배경, 답변원문)이 누락되어 있습니다.")
+
 
 
 
