@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from langchain_community.vectorstores import FAISS
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
-from langchain.schema import SystemMessage, HumanMessage
+from langchain_core.messages import SystemMessage, HumanMessage
 import openai
 from io import BytesIO
 
@@ -119,3 +119,4 @@ if {'사전질문', '질문배경', '답변원문'}.issubset(df.columns):
 
 else:
     st.error("필수 컬럼(사전질문, 질문배경, 답변원문)이 누락되어 있습니다.")
+
